@@ -4,7 +4,7 @@
 --------------------------------------------------------------------------------
 -- CONSTANTS
 --------------------------------------------------------------------------------
-local VERSION     = "1.0.0"
+local VERSION     = "1.0.1"
 local MODULE_NAME = "AVCG-Screen Master"
 
 local MODE = { IP = "IP", HTTP = "HTTP" }
@@ -68,16 +68,6 @@ Protocols["GRANDVIEW:NETWORK"] = {
     down = "/Open.js?a=100",
     stop = "/Stop.js?a=100",
   },
-  rx = {},
-}
-
---------------------------------------------------------------------------------
--- RELAY (placeholder – wire to Q-SYS relay outputs if needed)
---------------------------------------------------------------------------------
-Protocols["RELAY"] = {
-  make = "RELAY", model = "GENERIC SCREEN",
-  transport = "RELAY", port = 0, connect = CONN.TEMP,
-  tx = { up = "1", down = "2", stop = "1+2" },
   rx = {},
 }
 
@@ -205,6 +195,15 @@ local function Debug(msg)
     print(string.format("[%s][DBG] %s", MODULE_NAME, msg))
     SetString("DebugText", msg)
   end
+end
+
+local function ClearLogs()
+  SetString("EventLog", "")
+  SetString("TxLog", "")
+  SetString("RxLog", "")
+  SetString("DebugText", "")
+  SetString("StatusText", "")
+  print(string.format("[%s] logs cleared", MODULE_NAME))
 end
 
 --------------------------------------------------------------------------------
@@ -494,6 +493,11 @@ function Control(cmd)
     return
   end
 
+  if cmd == "CLEAR LOGS" then
+    ClearLogs()
+    return
+  end
+
   Notify("UNKNOWN COMMAND: " .. cmd)
 end
 
@@ -527,6 +531,7 @@ local function BindUI()
   SetLegend("Up", "Up")
   SetLegend("Down", "Down")
   SetLegend("Stop", "Stop")
+  SetLegend("Clear Logs", "Clear Logs")
 
   local m = C("Model")
   if m then
@@ -559,6 +564,15 @@ local function BindUI()
   end)
   Bind("DebugEnable", function(ctl)
     Control("DEBUG=" .. (ctl.Boolean and "1" or "0"))
+  end)
+
+  Bind("Clear Logs", function(ctl)
+    if not Pressed(ctl) then return end
+    ClearLogs()
+    -- Momentary only. Do not leave the LED on.
+    SuppressUI = true
+    if ctl and ctl.Boolean ~= nil then ctl.Boolean = false end
+    SuppressUI = false
   end)
 end
 

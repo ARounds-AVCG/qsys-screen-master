@@ -4,7 +4,7 @@
 --------------------------------------------------------------------------------
 -- CONSTANTS
 --------------------------------------------------------------------------------
-local VERSION     = "1.0.1"
+local VERSION     = "1.0.2"
 local MODULE_NAME = "AVCG-Screen Master"
 
 local MODE = { IP = "IP", HTTP = "HTTP" }
@@ -243,7 +243,9 @@ local function SendRaw(payload)
   local frame = payload .. term
   LastTxAt = Now()
   Status.last_cmd = payload
-  Debug("TX> " .. frame:gsub("\r", "<CR>"))
+  local dumped = frame:gsub("\r", "<CR>"):gsub("\n", "<LF>")
+  SetString("TxLog", dumped)
+  Debug("TX> " .. dumped)
   if Client.status ~= "connected" then return false end
   Tcp:Write(frame)
   return true
@@ -327,6 +329,9 @@ local function SendHttp(path)
     "GET %s HTTP/1.1\r\nHost: %s\r\nAuthorization: Basic %s\r\nConnection: close\r\n\r\n",
     path, ip, auth
   )
+  local dumped = request:gsub("\r", "<CR>"):gsub("\n", "<LF>")
+  SetString("TxLog", dumped)
+  Debug("HTTP TX " .. path)
   local hs = TcpSocket.New()
   hs.ReadTimeout = 2
   hs.WriteTimeout = 0
@@ -336,7 +341,11 @@ local function SendHttp(path)
       Notify("HTTP TX " .. path)
     elseif evt == TcpSocket.Events.Data then
       local data = s:Read(s.BufferLength)
-      Debug("HTTP RX " .. tostring(data))
+      if data then
+        local rxd = tostring(data):gsub("\r", "<CR>"):gsub("\n", "<LF>")
+        SetString("RxLog", rxd)
+        Debug("HTTP RX " .. rxd)
+      end
       s:Disconnect()
     elseif evt == TcpSocket.Events.Closed then
       Notify("HTTP done")
@@ -354,7 +363,9 @@ local function HandleRx(raw)
   if not raw or raw == "" then return end
   Status.comms_ok = true
   Queue.inflight = false
-  Debug("RX> " .. raw:gsub("\r", "<CR>"))
+  local dumped = raw:gsub("\r", "<CR>"):gsub("\n", "<LF>")
+  SetString("RxLog", dumped)
+  Debug("RX> " .. dumped)
   Notify("RX> " .. raw)
 
   if not Screen or not Screen.rx then
